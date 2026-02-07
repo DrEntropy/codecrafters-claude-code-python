@@ -77,7 +77,8 @@ def main():
 
         if message.content:
             # uncomment to see all responses.
-            #print(message.content) 
+            #print(message.content)
+            pass 
     
         if message.tool_calls is not None and len(message.tool_calls) > 0:
             tool_call = chat.choices[0].message.tool_calls[0]
