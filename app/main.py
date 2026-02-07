@@ -9,6 +9,7 @@ from openai import OpenAI
 
 API_KEY = os.getenv("OPENROUTER_API_KEY")
 BASE_URL = os.getenv("OPENROUTER_BASE_URL", default="https://openrouter.ai/api/v1")
+MODEL = "anthropic/claude-sonnet-4.5"
 
 def dispatch_tool_call(name, arguments):
     if name == "Read":
@@ -122,7 +123,7 @@ def main():
     loop_max = 5 # just in case, to prevent infinite loops
     while not finished:
         chat = client.chat.completions.create(
-            model="anthropic/claude-haiku-4.5",
+            model=MODEL,
             messages=messages,
             tools=[read_tool, write_tool, bash_tool]
         )
