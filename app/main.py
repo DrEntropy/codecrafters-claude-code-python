@@ -1,11 +1,25 @@
 import argparse
 import os
 import sys
+import json
 
 from openai import OpenAI
 
 API_KEY = os.getenv("OPENROUTER_API_KEY")
 BASE_URL = os.getenv("OPENROUTER_BASE_URL", default="https://openrouter.ai/api/v1")
+
+def dispatch_tool_call(name, arguments):
+    if name == "Read":
+        file_path = arguments.get("file_path")
+        if not file_path:
+            return "Error: 'file_path' argument is required"
+        try:
+            with open(file_path, 'r') as f:
+                return f.read()
+        except Exception as e:
+            return f"Error reading file: {str(e)}"
+    else:
+        return f"Unknown tool: {name}"
 
 
 def main():
@@ -51,6 +65,21 @@ def main():
 
     # TODO: Uncomment the following line to pass the first stage
     print(chat.choices[0].message.content)
+ 
+    if len(chat.choices[0].message.tool_calls) > 0:
+        tool_call = chat.choices[0].message.tool_calls[0]
+        if tool_call.type == "function":
+            function = tool_call.function
+            name = function.name
+            arguments = json.loads(function.arguments)
+            print(f"Tool call: {name} with arguments {arguments}", file=sys.stderr)
+            result = dispatch_tool_call(name, arguments)
+        else:
+            print(f"Unknown tool call type: {tool_call.type}", file=sys.stderr)
+            result = f"Error: Unknown tool call type {tool_call.type}"
+        print(f"{result}")
+    
+    
 
 
 if __name__ == "__main__":
