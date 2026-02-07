@@ -53,6 +53,9 @@ def main():
     
     finished = False
     messages = [{"role": "user", "content": args.p}]
+
+   # You can use print statements as follows for debugging, they'll be visible when running tests.
+    print("Logs from your program will appear here!", file=sys.stderr)
     
     # This loop will continue until the model stops making tool calls
     loop_max = 5 # just in case, to prevent infinite loops
@@ -66,8 +69,7 @@ def main():
         if not chat.choices or len(chat.choices) == 0:
             raise RuntimeError("no choices in response")
 
-        # You can use print statements as follows for debugging, they'll be visible when running tests.
-        print("Logs from your program will appear here!", file=sys.stderr)
+
 
         #print(chat.choices[0].message.content)
         message = chat.choices[0].message
@@ -80,7 +82,7 @@ def main():
             tool_call = chat.choices[0].message.tool_calls[0]
             if tool_call.type == "function":
                 function = tool_call.function
-                id = function.id
+                id = tool_call.id
                 name = function.name
                 arguments = json.loads(function.arguments)
                 print(f"Tool call: {name} with arguments {arguments}", file=sys.stderr)
