@@ -18,6 +18,17 @@ def dispatch_tool_call(name, arguments):
                 return f.read()
         except Exception as e:
             return f"Error reading file: {str(e)}"
+    elif name == "Write":
+        file_path = arguments.get("file_path")
+        content = arguments.get("content")
+        if not file_path or content is None:
+            return "Error: 'file_path' and 'content' arguments are required"
+        try:
+            with open(file_path, 'w') as f:
+                f.write(content)
+            return "Write successful"
+        except Exception as e:
+            return f"Error writing file: {str(e)}"
     else:
         return f"Unknown tool: {name}"
 
@@ -51,6 +62,28 @@ def main():
                 }
                 }
     
+    write_tool = {
+                "type": "function",
+                "function": {
+                    "name": "Write",
+                    "description": "Write content to a file",
+                    "parameters": {
+                    "type": "object",
+                    "required": ["file_path", "content"],
+                    "properties": {
+                        "file_path": {
+                        "type": "string",
+                        "description": "The path of the file to write to"
+                        },
+                        "content": {
+                        "type": "string",
+                        "description": "The content to write to the file"
+                        }
+                    }
+                    }
+                }
+                }
+    
     finished = False
     messages = [{"role": "user", "content": args.p}]
 
@@ -63,7 +96,7 @@ def main():
         chat = client.chat.completions.create(
             model="anthropic/claude-haiku-4.5",
             messages=messages,
-            tools=[read_tool]
+            tools=[read_tool, write_tool]
         )
 
         if not chat.choices or len(chat.choices) == 0:
