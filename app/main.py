@@ -1,9 +1,9 @@
 import argparse
-from ast import arguments
-import os
-import sys
 import json
+import os
+import shlex
 import subprocess
+import sys
 
 from openai import OpenAI
 
@@ -33,29 +33,27 @@ def dispatch_tool_call(name, arguments):
             return f"Error writing file: {str(e)}"
     elif name == "Bash":
         command = arguments.get("command")
-        
         if not command:
             return "Error: 'command' argument is required"
         print(f"Executing command: {command}", file=sys.stderr)
         try:
-            result = subprocess.run(str.split(command), check = True , text=True, capture_output=True)
+            result = subprocess.run(shlex.split(command), check=True, text=True, capture_output=True)
             return result.stdout
         except subprocess.CalledProcessError as e:
-            return f"Command failed with exit code {e.returncode}: {e.output}"
+            return f"Command failed with exit code {e.returncode}: {e.stderr or e.stdout or 'No output'}"
     else:
         return f"Unknown tool: {name}"
 
 
 def main():
-    p = argparse.ArgumentParser()
-    p.add_argument("-p", required=True)
-    args = p.parse_args()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-p", required=True)
+    args = parser.parse_args()
 
     if not API_KEY:
         raise RuntimeError("OPENROUTER_API_KEY is not set")
 
     client = OpenAI(api_key=API_KEY, base_url=BASE_URL)
-
 
     read_tool = {
                 "type": "function",
@@ -74,7 +72,7 @@ def main():
                     }
                 }
                 }
-    
+
     write_tool = {
                 "type": "function",
                 "function": {
@@ -113,13 +111,13 @@ def main():
                     }
                 }
                 }
-    
+
     finished = False
     messages = [{"role": "user", "content": args.p}]
 
-   # You can use print statements as follows for debugging, they'll be visible when running tests.
+    # You can use print statements as follows for debugging, they'll be visible when running tests.
     print("Logs from your program will appear here!", file=sys.stderr)
-    
+
     # This loop will continue until the model stops making tool calls
     loop_max = 5 # just in case, to prevent infinite loops
     while not finished:
@@ -129,49 +127,42 @@ def main():
             tools=[read_tool, write_tool, bash_tool]
         )
 
-        if not chat.choices or len(chat.choices) == 0:
+        if not chat.choices:
             raise RuntimeError("no choices in response")
 
-
-
-        #print(chat.choices[0].message.content)
         message = chat.choices[0].message
         messages.append(message)
 
-        if message.content:
-            # uncomment to see all responses.
-            #print(message.content)
-            pass 
-    
-        if message.tool_calls is not None and len(message.tool_calls) > 0:
-            tool_call = chat.choices[0].message.tool_calls[0]
-            if tool_call.type == "function":
-                function = tool_call.function
-                id = tool_call.id
-                name = function.name
-                arguments = json.loads(function.arguments)
-                print(f"Tool call: {name} with arguments {arguments}", file=sys.stderr)
-                result = dispatch_tool_call(name, arguments)
-            else:
-                print(f"Unknown tool call type: {tool_call.type}", file=sys.stderr)
-                result = f"Error: Unknown tool call type {tool_call.type}"
-            tool_call_result_message = {
-                "role": "tool",
-                "tool_call_id" : id,
-                "content": result,
-            }
-            messages.append(tool_call_result_message)
+        if message.tool_calls:
+            for tool_call in message.tool_calls:
+                if tool_call.type == "function":
+                    function = tool_call.function
+                    tool_call_id = tool_call.id
+                    name = function.name
+                    tool_args = json.loads(function.arguments)
+                    print(f"Tool call: {name} with arguments {tool_args}", file=sys.stderr)
+                    result = dispatch_tool_call(name, tool_args)
+                else:
+                    tool_call_id = tool_call.id
+                    print(f"Unknown tool call type: {tool_call.type}", file=sys.stderr)
+                    result = f"Error: Unknown tool call type {tool_call.type}"
+                tool_call_result_message = {
+                    "role": "tool",
+                    "tool_call_id": tool_call_id,
+                    "content": result,
+                }
+                messages.append(tool_call_result_message)
         else:
             # no tool calls, we're done
             finished = True
-    
+
         loop_max -= 1
         if loop_max <= 0:
             print("Reached maximum loop count, stopping to prevent infinite loop.", file=sys.stderr)
             break
 
     # return only the final content message
-    if message.content:     
+    if message.content:
         print(message.content)
 
 
