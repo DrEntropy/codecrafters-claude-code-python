@@ -63,10 +63,13 @@ def main():
     # You can use print statements as follows for debugging, they'll be visible when running tests.
     print("Logs from your program will appear here!", file=sys.stderr)
 
-    # TODO: Uncomment the following line to pass the first stage
     #print(chat.choices[0].message.content)
+    message = chat.choices[0].message
+
+    if message.content:
+        print(message.content)
  
-    if len(chat.choices[0].message.tool_calls) > 0:
+    if message.tool_calls is not None and len(message.tool_calls) > 0:
         tool_call = chat.choices[0].message.tool_calls[0]
         if tool_call.type == "function":
             function = tool_call.function
