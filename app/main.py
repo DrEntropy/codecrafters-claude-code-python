@@ -9,7 +9,7 @@ from openai import OpenAI
 
 API_KEY = os.getenv("OPENROUTER_API_KEY")
 BASE_URL = os.getenv("OPENROUTER_BASE_URL", default="https://openrouter.ai/api/v1")
-MODEL = "anthropic/claude-sonnet-4.5"
+MODEL = "anthropic/claude-haiku-4.5"
 
 def dispatch_tool_call(name, arguments):
     if name == "Read":
