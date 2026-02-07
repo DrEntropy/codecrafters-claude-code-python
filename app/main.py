@@ -76,7 +76,8 @@ def main():
         messages.append(message)
 
         if message.content:
-            print(message.content)
+            # uncomment to see all responses.
+            #print(message.content) 
     
         if message.tool_calls is not None and len(message.tool_calls) > 0:
             tool_call = chat.choices[0].message.tool_calls[0]
@@ -104,6 +105,10 @@ def main():
         if loop_max <= 0:
             print("Reached maximum loop count, stopping to prevent infinite loop.", file=sys.stderr)
             break
+
+    # return only the final content message
+    if message.content:     
+        print(message.content)
 
 
 if __name__ == "__main__":
