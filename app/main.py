@@ -1,7 +1,9 @@
 import argparse
+from ast import arguments
 import os
 import sys
 import json
+import subprocess
 
 from openai import OpenAI
 
@@ -29,6 +31,17 @@ def dispatch_tool_call(name, arguments):
             return "Write successful"
         except Exception as e:
             return f"Error writing file: {str(e)}"
+    elif name == "Bash":
+        command = arguments.get("command")
+        
+        if not command:
+            return "Error: 'command' argument is required"
+        print(f"Executing command: {command}", file=sys.stderr)
+        try:
+            result = subprocess.run(str.split(command), check = True , text=True, capture_output=True)
+            return result.stdout
+        except subprocess.CalledProcessError as e:
+            return f"Command failed with exit code {e.returncode}: {e.output}"
     else:
         return f"Unknown tool: {name}"
 
@@ -83,6 +96,23 @@ def main():
                     }
                 }
                 }
+    bash_tool = {
+                "type": "function",
+                "function": {
+                    "name": "Bash",
+                    "description": "Execute a shell command",
+                    "parameters": {
+                    "type": "object",
+                    "required": ["command"],
+                    "properties": {
+                        "command": {
+                        "type": "string",
+                        "description": "The command to execute"
+                        }
+                    }
+                    }
+                }
+                }
     
     finished = False
     messages = [{"role": "user", "content": args.p}]
@@ -96,7 +126,7 @@ def main():
         chat = client.chat.completions.create(
             model="anthropic/claude-haiku-4.5",
             messages=messages,
-            tools=[read_tool, write_tool]
+            tools=[read_tool, write_tool, bash_tool]
         )
 
         if not chat.choices or len(chat.choices) == 0:
